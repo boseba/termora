@@ -1,59 +1,60 @@
-# ComposaUi
+# Termora
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.0.4.
+Termora is an Angular library workspace dedicated to building a modern terminal UI component library.
 
-## Development server
+## Status
 
-To start a local development server, run:
+The project is currently in its foundation phase.
+The workspace, packaging, linting, testing, and library build pipeline are prepared before introducing public components and services.
 
-```bash
-ng serve
-```
+## Development
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+Install dependencies:
 
 ```bash
-ng generate component component-name
+pnpm install
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+Build the library:
 
 ```bash
-ng generate --help
+pnpm build
 ```
 
-## Building
-
-To build the project run:
+Run the build in watch mode:
 
 ```bash
-ng build
+pnpm build:watch
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+Run unit tests:
 
 ```bash
-ng test
+pnpm test
 ```
 
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
+Run linting:
 
 ```bash
-ng e2e
+pnpm lint
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+## Library structure
 
-## Additional Resources
+The publishable library lives in:
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+```text
+projects/termora
+```
+
+## Publishing goal
+
+The library is intended to be published as:
+
+```text
+termora
+```
+
+## License
+
+MIT

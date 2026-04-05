@@ -1,6 +1,6 @@
 {
   "name": "termora",
-  "version": "0.0.7",
+  "version": "0.0.0",
   "author": "Sébastien Bosmans <https://github.com/boseba>",
   "license": "MIT",
   "repository": {
@@ -9,7 +9,6 @@
   },
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
