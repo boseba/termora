@@ -13,6 +13,8 @@
         "build": "ng build termora",
         "build:watch": "ng build termora --watch --configuration development",
         "test": "ng test termora",
+        "test:ci": "ng test termora --watch=false",
+        "test:coverage": "ng test termora --watch=false --code-coverage",
         "lint": "ng lint termora",
         "format": "prettier --write .",
         "format:check": "prettier --check ."
