@@ -1,0 +1,95 @@
+:host {
+  display: block;
+}
+
+:host ::ng-deep .layer.highlight .suggestion {
+  opacity: 0.4;
+}
+
+:host ::ng-deep .layer.highlight .keyword {
+  color: #f5f543 !important;
+}
+
+:host ::ng-deep .layer.highlight .arg-option {
+  opacity: 0.4;
+}
+
+:host ::ng-deep .layer.highlight .arg-sep {
+  opacity: 0.2;
+}
+
+:host ::ng-deep .layer.highlight .arg-selected {
+  opacity: 1;
+  color: rgba(64, 224, 208, 0.95);
+}
+
+.input {
+  display: flex;
+  gap: 0.8rem;
+
+  >span {
+    flex: 0 1 auto;
+    color: #d25585;
+  }
+
+  >div {
+    position: relative;
+    flex: 1 1 auto;
+
+    .layer {
+      position: absolute;
+      left: 0;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+      font-family: Consolas, 'Courier New', Menlo, Monaco, 'Lucida Console', monospace;
+      font-size: 1.5rem;
+      line-height: 1.5;
+      z-index: 0;
+
+      &.highlight {
+        color: rgba(255, 255, 255, 0.7);
+      }
+    }
+
+    input {
+      display: block;
+      width: 100%;
+      background-color: transparent;
+      border: 0;
+      margin: 0;
+      padding: 0;
+      caret-color: rgba(255, 255, 255, 0.7);
+      outline: none;
+      font-family: Consolas, 'Courier New', Menlo, Monaco, 'Lucida Console', monospace;
+      font-size: 1.5rem;
+      line-height: 1.5;
+      color: transparent;
+      position: relative;
+      z-index: 1;
+
+      &::selection {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: transparent;
+      }
+
+      &::-moz-selection {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: transparent;
+      }
+    }
+  }
+}
+
+@media (max-width: 480px) and (orientation: portrait) {
+  .input {
+    >div {
+
+      .layer,
+      input {
+        font-size: 1.2rem !important;
+      }
+    }
+  }
+}

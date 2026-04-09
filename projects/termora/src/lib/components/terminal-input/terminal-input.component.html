@@ -1,0 +1,10 @@
+<div class="input">
+  <span>#</span>
+
+  <div>
+    <input #inputCommand type="text" [value]="state().inputValue" (input)="onInput($event)"
+      (keydown)="onKeyDown($event)" spellcheck="false" autocomplete="off" />
+
+    <div class="layer highlight" [innerHTML]="improvedInput()"></div>
+  </div>
+</div>

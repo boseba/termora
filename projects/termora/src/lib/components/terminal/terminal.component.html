@@ -1,0 +1,20 @@
+<div class="terminal-container" #container (scroll)="onScroll()" (mousedown)="focusInput($event)">
+  <div class="terminal">
+    <div class="output">
+      @for (line of state().visibleLines; track line.id) {
+      <div class="line" [class.command]="line.kind === 'command'">
+        @if (line.kind === 'command') {
+        <span class="prompt">></span>
+        }
+        <span class="content" [innerHTML]="line.renderedHtml"></span>
+      </div>
+      }
+
+      <div class="overlay"></div>
+    </div>
+
+    @if (showInput()) {
+    <termora-terminal-input #terminalInput [terminalId]="terminalId()" (commandSubmitted)="forwardCommand($event)" />
+    }
+  </div>
+</div>
