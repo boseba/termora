@@ -5,5 +5,9 @@ export * from './lib/models/terminal-command.model';
 export * from './lib/models/terminal-line.model';
 export * from './lib/models/terminal-options.model';
 export * from './lib/models/terminal-state.model';
+export * from './lib/models/termora-config.model';
+export * from './lib/models/termora-event.model';
+
+export * from './lib/providers/provide-termora';
 
 export * from './lib/services/terminal.service';

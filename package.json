@@ -1,6 +1,6 @@
 {
   "name": "termora-workspace",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": true,
   "author": "Sébastien Bosmans <https://github.com/boseba>",
   "license": "MIT",
@@ -16,6 +16,7 @@
     "test:ci": "ng test termora --watch=false",
     "test:coverage": "ng test termora --watch=false --coverage",
     "lint": "ng lint termora",
+    "lint:fix": "ng lint termora --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

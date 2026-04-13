@@ -32,7 +32,7 @@ export class TerminalMarkupRenderer {
     const plainTextParts: string[] = [];
     const styleStack: StyleState[] = [this._createDefaultStyleState()];
 
-    let cursor: number = 0;
+    let cursor = 0;
     let match: RegExpExecArray | null = TerminalMarkupRenderer._tokenPattern.exec(value);
 
     while (match) {

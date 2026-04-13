@@ -1,8 +1,8 @@
 import {
-  AfterViewChecked,
+  type AfterViewChecked,
   ChangeDetectionStrategy,
   Component,
-  ElementRef,
+  type ElementRef,
   computed,
   effect,
   inject,
@@ -11,8 +11,8 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { TerminalCommandDefinition } from '../../models/terminal-command.model';
-import { TerminalState } from '../../models/terminal-state.model';
+import { type TerminalCommandDefinition } from '../../models/terminal-command.model';
+import { type TerminalState } from '../../models/terminal-state.model';
 import { TerminalService } from '../../services/terminal.service';
 import { TerminalInputComponent } from '../terminal-input/terminal-input.component';
 
@@ -25,7 +25,7 @@ import { TerminalInputComponent } from '../terminal-input/terminal-input.compone
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TerminalComponent implements AfterViewChecked {
-  public readonly terminalId = input.required<string>();
+  public readonly terminalId = input<string | null>(null);
   public readonly showInput = input<boolean>(true);
   public readonly filterText = input<string>('');
   public readonly maxLines = input<number>(500);
@@ -33,36 +33,23 @@ export class TerminalComponent implements AfterViewChecked {
 
   public readonly commandSubmitted = output<string>();
 
-  protected readonly container =
-    viewChild.required<ElementRef<HTMLDivElement>>('container');
+  protected readonly container = viewChild.required<ElementRef<HTMLDivElement>>('container');
 
-  protected readonly terminalInput =
-    viewChild<TerminalInputComponent>('terminalInput');
+  protected readonly terminalInput = viewChild<TerminalInputComponent>('terminalInput');
 
   private readonly _terminalService = inject(TerminalService);
 
-  protected readonly states = this._terminalService.getStates();
-
-  protected readonly state = computed((): TerminalState => {
-    const state: TerminalState | undefined = this.states()[this.terminalId()];
-
-    if (!state) {
-      throw new Error(`Terminal "${this.terminalId()}" is not initialized.`);
-    }
-
-    return state;
-  });
+  protected readonly state = computed(
+    (): TerminalState => this._terminalService.getStateSnapshot(this.terminalId()),
+  );
 
   constructor() {
     effect(() => {
-      const terminalId: string = this.terminalId();
-      this._terminalService.ensureTerminal(terminalId);
+      this._terminalService.ensureTerminal(this.terminalId());
     });
 
     effect(() => {
-      const terminalId: string = this.terminalId();
-
-      this._terminalService.configure(terminalId, {
+      this._terminalService.configure(this.terminalId(), {
         showInput: this.showInput(),
         filterText: this.filterText(),
         maxLines: this.maxLines(),
@@ -82,7 +69,7 @@ export class TerminalComponent implements AfterViewChecked {
 
   protected onScroll(): void {
     const element: HTMLDivElement = this.container().nativeElement;
-    const threshold: number = 10;
+    const threshold = 10;
     const distance: number = element.scrollHeight - element.scrollTop - element.clientHeight;
     const isAtBottom: boolean = distance <= threshold;
 

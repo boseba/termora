@@ -1,13 +1,14 @@
-import { Injectable, Signal, inject } from '@angular/core';
+import { Injectable, type Signal, inject } from '@angular/core';
 
 import { CommandEngine } from '../commands/command-engine';
 import { CommandRegistry } from '../commands/command-registry';
 import {
-  TerminalCommandDefinition,
-  TerminalCommandResolution,
+  type TerminalCommandDefinition,
+  type TerminalCommandResolution,
 } from '../models/terminal-command.model';
-import { TerminalOptions } from '../models/terminal-options.model';
-import { TerminalState } from '../models/terminal-state.model';
+import { type TerminalLineKind } from '../models/terminal-line.model';
+import { type TerminalOptions } from '../models/terminal-options.model';
+import { type TerminalState } from '../models/terminal-state.model';
 import { TerminalStore } from '../stores/terminal.store';
 
 export interface SubmittedCommandResult {
@@ -16,13 +17,18 @@ export interface SubmittedCommandResult {
   rawInput: string;
 }
 
+export interface TerminalWriteOptions {
+  terminalId?: string | null;
+  kind?: TerminalLineKind;
+}
+
 @Injectable({ providedIn: 'root' })
 export class TerminalService {
   private readonly _store = inject(TerminalStore);
   private readonly _engine = inject(CommandEngine);
   private readonly _registry = inject(CommandRegistry);
 
-  public ensureTerminal(terminalId: string): void {
+  public ensureTerminal(terminalId?: string | null): void {
     this._store.ensureTerminal(terminalId);
   }
 
@@ -30,32 +36,41 @@ export class TerminalService {
     return this._store.getStates();
   }
 
-  public getStateSnapshot(terminalId: string): TerminalState | undefined {
+  public getStateSnapshot(terminalId?: string | null): TerminalState {
     return this._store.getStateSnapshot(terminalId);
   }
 
-  public configure(terminalId: string, options: Partial<TerminalOptions>): void {
+  public configure(terminalId: string | null | undefined, options: Partial<TerminalOptions>): void {
     this._store.setOptions(terminalId, options);
   }
 
-  public print(terminalId: string, value: string): void {
-    this._store.appendLine(terminalId, value, 'output');
+  public setMaxStoredLines(maxStoredLines: number): void {
+    this._store.configureMaxStoredLines(maxStoredLines);
   }
 
-  public clear(terminalId: string): void {
+  public print(value: string, options?: TerminalWriteOptions): void;
+  public print(terminalId: string, value: string): void;
+  public print(firstArgument: string, secondArgument?: string | TerminalWriteOptions): void {
+    if (typeof secondArgument === 'string') {
+      this._store.appendLine(firstArgument, secondArgument, 'output');
+      return;
+    }
+
+    const writeOptions: TerminalWriteOptions | undefined = secondArgument;
+
+    this._store.appendLine(writeOptions?.terminalId, firstArgument, writeOptions?.kind ?? 'output');
+  }
+
+  public clear(terminalId?: string | null): void {
     this._store.clear(terminalId);
   }
 
-  public setAutoScrollEnabled(terminalId: string, enabled: boolean): void {
+  public setAutoScrollEnabled(terminalId: string | null | undefined, enabled: boolean): void {
     this._store.setAutoScrollEnabled(terminalId, enabled);
   }
 
-  public updateInput(terminalId: string, value: string): void {
-    const state: TerminalState | undefined = this._store.getStateSnapshot(terminalId);
-
-    if (!state) {
-      return;
-    }
+  public updateInput(terminalId: string | null | undefined, value: string): void {
+    const state: TerminalState = this._store.getStateSnapshot(terminalId);
 
     const resolution: TerminalCommandResolution = this._engine.resolve(
       value,
@@ -63,43 +78,26 @@ export class TerminalService {
     );
 
     this._store.setInputValue(terminalId, value);
-    this._store.setSuggestions(
-      terminalId,
-      resolution.suggestions,
-      resolution.ghostCompletion,
-    );
+    this._store.setSuggestions(terminalId, resolution.suggestions, resolution.ghostCompletion);
   }
 
-  public moveHistory(terminalId: string, direction: 'up' | 'down'): string {
+  public moveHistory(terminalId: string | null | undefined, direction: 'up' | 'down'): string {
     const nextValue: string = this._store.moveHistory(terminalId, direction);
-    const state: TerminalState | undefined = this._store.getStateSnapshot(terminalId);
-
-    if (!state) {
-      return nextValue;
-    }
+    const state: TerminalState = this._store.getStateSnapshot(terminalId);
 
     const resolution: TerminalCommandResolution = this._engine.resolve(
       nextValue,
       state.options.commands,
     );
 
-    this._store.setSuggestions(
-      terminalId,
-      resolution.suggestions,
-      resolution.ghostCompletion,
-    );
+    this._store.setSuggestions(terminalId, resolution.suggestions, resolution.ghostCompletion);
 
     return nextValue;
   }
 
-  public applyFirstSuggestion(terminalId: string): string | null {
-    const state: TerminalState | undefined = this._store.getStateSnapshot(terminalId);
-
-    if (!state) {
-      return null;
-    }
-
-    const firstSuggestion = state.suggestions[0];
+  public applyFirstSuggestion(terminalId: string | null | undefined): string | null {
+    const state: TerminalState = this._store.getStateSnapshot(terminalId);
+    const firstSuggestion = state.suggestions.at(0);
 
     if (!firstSuggestion) {
       return null;
@@ -125,7 +123,10 @@ export class TerminalService {
     return nextValue;
   }
 
-  public submitCommand(terminalId: string, rawInput: string): SubmittedCommandResult {
+  public submitCommand(
+    terminalId: string | null | undefined,
+    rawInput: string,
+  ): SubmittedCommandResult {
     const trimmedInput: string = rawInput.trim();
 
     if (!trimmedInput) {
@@ -136,15 +137,7 @@ export class TerminalService {
       };
     }
 
-    const state: TerminalState | undefined = this._store.getStateSnapshot(terminalId);
-
-    if (!state) {
-      return {
-        handled: false,
-        cleared: false,
-        rawInput: trimmedInput,
-      };
-    }
+    const state: TerminalState = this._store.getStateSnapshot(terminalId);
 
     const command = this._registry.find(
       this._engine.resolve(trimmedInput, state.options.commands).parsed.commandName,
@@ -157,7 +150,10 @@ export class TerminalService {
 
     if (!command) {
       this._store.appendLine(terminalId, trimmedInput, 'command');
-      this._store.appendError(terminalId, `[i][color="var(--termora-color-error)"]command '${trimmedInput}' not found[/color][/i]`);
+      this._store.appendError(
+        terminalId,
+        `[i][color="var(--termora-color-error)"]command '${trimmedInput}' not found[/color][/i]`,
+      );
 
       return {
         handled: false,
@@ -173,10 +169,13 @@ export class TerminalService {
     }
 
     this._engine.execute(
-      terminalId,
+      terminalId ?? null,
       trimmedInput,
       command,
-      (value: string) => this.print(terminalId, value),
+      (value: string) =>
+        this.print(value, {
+          terminalId,
+        }),
       () => this.clear(terminalId),
     );
 
@@ -188,17 +187,17 @@ export class TerminalService {
   }
 
   public setCommands(
-    terminalId: string,
+    terminalId: string | null | undefined,
     commands: readonly TerminalCommandDefinition[],
   ): void {
     this._store.setOptions(terminalId, { commands });
   }
 
-  public setFilter(terminalId: string, filterText: string): void {
+  public setFilter(terminalId: string | null | undefined, filterText: string): void {
     this._store.setOptions(terminalId, { filterText });
   }
 
-  public setMaxLines(terminalId: string, maxLines: number): void {
+  public setMaxLines(terminalId: string | null | undefined, maxLines: number): void {
     this._store.setOptions(terminalId, { maxLines });
   }
 }

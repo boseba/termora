@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 
-import { TerminalCommandDefinition } from '../models/terminal-command.model';
+import { type TerminalCommandDefinition } from '../models/terminal-command.model';
 import { NATIVE_COMMAND_DEFINITIONS } from './command-definitions';
 
 @Injectable({ providedIn: 'root' })

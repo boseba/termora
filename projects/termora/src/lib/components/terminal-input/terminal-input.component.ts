@@ -3,13 +3,14 @@ import {
   Component,
   computed,
   effect,
-  ElementRef,
+  type ElementRef,
   inject,
   input,
   output,
   viewChild,
 } from '@angular/core';
-import { TerminalState } from '../../models/terminal-state.model';
+
+import { type TerminalState } from '../../models/terminal-state.model';
 import { TerminalService } from '../../services/terminal.service';
 
 @Component({
@@ -20,7 +21,7 @@ import { TerminalService } from '../../services/terminal.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TerminalInputComponent {
-  public readonly terminalId = input.required<string>();
+  public readonly terminalId = input<string | null>(null);
   public readonly commandSubmitted = output<string>();
 
   protected readonly inputCommandRef =
@@ -28,17 +29,9 @@ export class TerminalInputComponent {
 
   private readonly _terminalService = inject(TerminalService);
 
-  protected readonly states = this._terminalService.getStates();
-
-  protected readonly state = computed((): TerminalState => {
-    const state: TerminalState | undefined = this.states()[this.terminalId()];
-
-    if (!state) {
-      throw new Error(`Terminal "${this.terminalId()}" is not initialized.`);
-    }
-
-    return state;
-  });
+  protected readonly state = computed(
+    (): TerminalState => this._terminalService.getStateSnapshot(this.terminalId()),
+  );
 
   constructor() {
     effect(() => {
@@ -111,19 +104,13 @@ export class TerminalInputComponent {
   }
 
   private _escapeHtml(value: string): string {
-    return value
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;');
+    return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
   }
 
   private _submit(): void {
     const currentValue: string = this.state().inputValue;
 
-    const result = this._terminalService.submitCommand(
-      this.terminalId(),
-      currentValue,
-    );
+    const result = this._terminalService.submitCommand(this.terminalId(), currentValue);
 
     if (!result.handled && result.rawInput.trim()) {
       this.commandSubmitted.emit(result.rawInput);

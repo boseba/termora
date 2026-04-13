@@ -1,4 +1,4 @@
-import { TerminalCommandDefinition } from './terminal-command.model';
+import { type TerminalCommandDefinition } from './terminal-command.model';
 
 export interface TerminalOptions {
     maxLines: number;

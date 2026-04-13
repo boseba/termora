@@ -1,10 +1,10 @@
 import { inject, Injectable } from '@angular/core';
 
 import {
-  TerminalCommandDefinition,
-  TerminalCommandExecutionContext,
-  TerminalCommandResolution,
-  TerminalCommandSuggestion,
+  type TerminalCommandDefinition,
+  type TerminalCommandExecutionContext,
+  type TerminalCommandResolution,
+  type TerminalCommandSuggestion,
 } from '../models/terminal-command.model';
 import { CommandParser } from './command-parser';
 import { CommandRegistry } from './command-registry';
@@ -71,10 +71,10 @@ export class CommandEngine {
       ? ''
       : (parsed.arguments[activeArgumentIndex] ?? '');
 
-    const filteredSuggestions: readonly TerminalCommandSuggestion[] =
-      parameterSuggestions.filter((suggestion: TerminalCommandSuggestion) =>
+    const filteredSuggestions: readonly TerminalCommandSuggestion[] = parameterSuggestions.filter(
+      (suggestion: TerminalCommandSuggestion) =>
         suggestion.value.toLowerCase().startsWith(activeArgumentValue.toLowerCase()),
-      );
+    );
 
     return {
       parsed,
@@ -85,7 +85,7 @@ export class CommandEngine {
   }
 
   public execute(
-    terminalId: string,
+    terminalId: string | null,
     rawInput: string,
     command: TerminalCommandDefinition,
     print: (value: string) => void,
@@ -128,10 +128,10 @@ export class CommandEngine {
       return argumentDefinition.values.flatMap((definition) =>
         definition.type === 'enum'
           ? definition.values.map(
-            (value: string): TerminalCommandSuggestion => ({
-              value,
-            }),
-          )
+              (value: string): TerminalCommandSuggestion => ({
+                value,
+              }),
+            )
           : [],
       );
     }
@@ -143,7 +143,7 @@ export class CommandEngine {
     currentValue: string,
     suggestions: readonly TerminalCommandSuggestion[],
   ): string | null {
-    const firstSuggestion: TerminalCommandSuggestion | undefined = suggestions[0];
+    const firstSuggestion: TerminalCommandSuggestion | undefined = suggestions.at(0);
 
     if (!firstSuggestion) {
       return null;
@@ -159,6 +159,6 @@ export class CommandEngine {
 
     const suffix: string = firstSuggestion.value.slice(currentValue.length);
 
-    return suffix || null;
+    return suffix.length > 0 ? suffix : null;
   }
 }

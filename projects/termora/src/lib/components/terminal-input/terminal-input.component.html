@@ -2,8 +2,8 @@
   <span>#</span>
 
   <div>
-    <input #inputCommand type="text" [value]="state().inputValue" (input)="onInput($event)"
-      (keydown)="onKeyDown($event)" spellcheck="false" autocomplete="off" />
+    <input #inputCommand type="text" [value]="state().inputValue" spellcheck="false" autocomplete="off"
+      (input)="onInput($event)" (keydown)="onKeyDown($event)" />
 
     <div class="layer highlight" [innerHTML]="improvedInput()"></div>
   </div>

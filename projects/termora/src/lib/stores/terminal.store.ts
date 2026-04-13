@@ -1,325 +1,157 @@
-import { Injectable, Signal, inject, signal } from '@angular/core';
+import { computed, inject, Injectable, type Signal } from '@angular/core';
 
-import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { TerminalCommandSuggestion } from '../models/terminal-command.model';
-import { TerminalLine, TerminalLineKind } from '../models/terminal-line.model';
-import {
-  DEFAULT_TERMINAL_OPTIONS,
-  TerminalOptions,
-} from '../models/terminal-options.model';
-import { TerminalState } from '../models/terminal-state.model';
-import { TerminalMarkupRenderer } from '../rendering/terminal-markup-renderer';
+import { type TerminalLine, type TerminalLineKind } from '../models/terminal-line.model';
+import { type TerminalSessionState } from '../models/terminal-session-state.model';
+import { type TerminalState } from '../models/terminal-state.model';
+import { getTerminalChannelKey } from '../utils/terminal-channel';
+import { TerminalLogStore } from './terminal-log.store';
+import { TerminalSessionStore } from './terminal-session.store';
 
 @Injectable({ providedIn: 'root' })
 export class TerminalStore {
-  private readonly _renderer = inject(TerminalMarkupRenderer);
-  private readonly _sanitizer = inject(DomSanitizer);
+  private readonly _logStore = inject(TerminalLogStore);
+  private readonly _sessionStore = inject(TerminalSessionStore);
 
-  private readonly _states = signal<Record<string, TerminalState>>({});
+  private readonly _states = computed((): Record<string, TerminalState> => {
+    const sessionStates: Record<string, TerminalSessionState> = this._sessionStore.getStates()();
+    const linesByChannel: Record<string, readonly TerminalLine[]> =
+      this._logStore.getLinesByChannel()();
 
-  public ensureTerminal(terminalId: string): void {
-    if (this._states()[terminalId]) {
-      return;
+    const channelKeys: string[] = Array.from(
+      new Set([...Object.keys(sessionStates), ...Object.keys(linesByChannel)]),
+    );
+
+    const states: Record<string, TerminalState> = {};
+
+    for (const channelKey of channelKeys) {
+      if (!Object.hasOwn(sessionStates, channelKey)) {
+        continue;
+      }
+
+      const sessionState: TerminalSessionState = sessionStates[channelKey];
+
+      states[channelKey] = this._composeState(sessionState, linesByChannel[channelKey] ?? []);
     }
 
-    const initialState: TerminalState = {
-      id: terminalId,
-      lines: [],
-      visibleLines: [],
-      options: { ...DEFAULT_TERMINAL_OPTIONS },
-      autoScrollEnabled: true,
-      inputValue: '',
-      history: [],
-      historyIndex: null,
-      suggestions: [],
-      ghostCompletion: null,
-    };
+    return states;
+  });
 
-    this._states.update((states: Record<string, TerminalState>) => ({
-      ...states,
-      [terminalId]: initialState,
-    }));
+  public ensureTerminal(terminalId: string | null | undefined): void {
+    this._sessionStore.ensureTerminal(terminalId);
   }
 
-  public getStateSnapshot(terminalId: string): TerminalState | undefined {
-    return this._states()[terminalId];
+  public getStateSnapshot(terminalId: string | null | undefined): TerminalState {
+    this.ensureTerminal(terminalId);
+
+    const channelKey: string = getTerminalChannelKey(terminalId);
+    const states: Record<string, TerminalState> = this._states();
+
+    if (!Object.hasOwn(states, channelKey)) {
+      throw new Error('Terminal state could not be resolved.');
+    }
+
+    return states[channelKey];
   }
 
   public getStates(): Signal<Record<string, TerminalState>> {
-    return this._states.asReadonly();
+    return this._states;
+  }
+
+  public configureMaxStoredLines(maxStoredLines: number): void {
+    this._logStore.configureMaxStoredLines(maxStoredLines);
   }
 
   public setOptions(
-    terminalId: string,
-    partialOptions: Partial<TerminalOptions>,
+    terminalId: string | null | undefined,
+    partialOptions: Partial<TerminalState['options']>,
   ): void {
-    this.ensureTerminal(terminalId);
-
-    this._patchState(terminalId, (state: TerminalState): TerminalState => {
-      const nextOptions: TerminalOptions = {
-        ...state.options,
-        ...partialOptions,
-      };
-
-      const hasChanged: boolean =
-        nextOptions.maxLines !== state.options.maxLines ||
-        nextOptions.showInput !== state.options.showInput ||
-        nextOptions.filterText !== state.options.filterText ||
-        nextOptions.commands !== state.options.commands;
-
-      if (!hasChanged) {
-        return state;
-      }
-
-      return this._withVisibleLines({
-        ...state,
-        options: nextOptions,
-      });
-    });
+    this._sessionStore.setOptions(terminalId, partialOptions);
   }
 
   public appendLine(
-    terminalId: string,
+    terminalId: string | null | undefined,
     raw: string,
     kind: TerminalLineKind = 'output',
   ): void {
     this.ensureTerminal(terminalId);
-
-    const rendered = this._renderer.render(raw);
-
-    const safeHtml: SafeHtml =
-      this._sanitizer.bypassSecurityTrustHtml(rendered.renderedHtml);
-
-    const line: TerminalLine = {
-      id: this._createLineId(),
-      raw,
-      plainText: rendered.plainText,
-      renderedHtml: safeHtml,
-      kind,
-      timestamp: Date.now(),
-    };
-
-    this._patchState(terminalId, (state: TerminalState): TerminalState => {
-      const maxLines: number = state.options.maxLines;
-      const nextLines: readonly TerminalLine[] = [...state.lines, line].slice(-maxLines);
-
-      return this._withVisibleLines({
-        ...state,
-        lines: nextLines,
-      });
-    });
+    this._logStore.appendLine(terminalId, raw, kind);
   }
 
-  public appendError(
-    terminalId: string,
-    raw: string,
-  ): void {
-    return this.appendLine(terminalId, raw, 'error');
+  public appendError(terminalId: string | null | undefined, raw: string): void {
+    this.appendLine(terminalId, raw, 'error');
   }
 
-  public clear(terminalId: string): void {
+  public clear(terminalId: string | null | undefined): void {
     this.ensureTerminal(terminalId);
-
-    this._patchState(terminalId, (state: TerminalState): TerminalState => ({
-      ...state,
-      lines: [],
-      visibleLines: [],
-      suggestions: [],
-      ghostCompletion: null,
-    }));
+    this._logStore.clear(terminalId);
+    this._sessionStore.resetSuggestions(terminalId);
   }
 
-  public setAutoScrollEnabled(terminalId: string, enabled: boolean): void {
-    this.ensureTerminal(terminalId);
-
-    this._patchState(terminalId, (state: TerminalState): TerminalState => {
-      if (state.autoScrollEnabled === enabled) {
-        return state;
-      }
-
-      return {
-        ...state,
-        autoScrollEnabled: enabled,
-      };
-    });
+  public setAutoScrollEnabled(terminalId: string | null | undefined, enabled: boolean): void {
+    this._sessionStore.setAutoScrollEnabled(terminalId, enabled);
   }
 
-  public setInputValue(terminalId: string, value: string): void {
-    this.ensureTerminal(terminalId);
-
-    this._patchState(terminalId, (state: TerminalState): TerminalState => {
-      if (state.inputValue === value) {
-        return state;
-      }
-
-      return {
-        ...state,
-        inputValue: value,
-      };
-    });
+  public setInputValue(terminalId: string | null | undefined, value: string): void {
+    this._sessionStore.setInputValue(terminalId, value);
   }
 
-  public pushHistory(terminalId: string, value: string): void {
-    this.ensureTerminal(terminalId);
-
-    if (!value.trim()) {
-      return;
-    }
-
-    this._patchState(terminalId, (state: TerminalState): TerminalState => {
-      const previousEntry: string | undefined = state.history.at(-1);
-
-      if (previousEntry === value) {
-        return state.historyIndex === null
-          ? state
-          : {
-            ...state,
-            historyIndex: null,
-          };
-      }
-
-      return {
-        ...state,
-        history: [...state.history, value],
-        historyIndex: null,
-      };
-    });
+  public pushHistory(terminalId: string | null | undefined, value: string): void {
+    this._sessionStore.pushHistory(terminalId, value);
   }
 
-  public moveHistory(terminalId: string, direction: 'up' | 'down'): string {
-    this.ensureTerminal(terminalId);
-
-    const state: TerminalState | undefined = this._states()[terminalId];
-
-    if (!state) {
-      return '';
-    }
-
-    const historyLength: number = state.history.length;
-
-    if (historyLength === 0) {
-      return state.inputValue;
-    }
-
-    let nextIndex: number | null = state.historyIndex;
-
-    if (direction === 'up') {
-      nextIndex =
-        nextIndex === null ? historyLength - 1 : Math.max(nextIndex - 1, 0);
-    } else if (nextIndex !== null) {
-      nextIndex = nextIndex + 1 >= historyLength ? null : nextIndex + 1;
-    }
-
-    const nextValue: string =
-      nextIndex === null ? '' : (state.history[nextIndex] ?? '');
-
-    this._patchState(terminalId, (currentState: TerminalState): TerminalState => {
-      if (
-        currentState.historyIndex === nextIndex &&
-        currentState.inputValue === nextValue
-      ) {
-        return currentState;
-      }
-
-      return {
-        ...currentState,
-        historyIndex: nextIndex,
-        inputValue: nextValue,
-      };
-    });
-
-    return nextValue;
+  public moveHistory(terminalId: string | null | undefined, direction: 'up' | 'down'): string {
+    return this._sessionStore.moveHistory(terminalId, direction);
   }
 
   public setSuggestions(
-    terminalId: string,
-    suggestions: readonly TerminalCommandSuggestion[],
+    terminalId: string | null | undefined,
+    suggestions: TerminalState['suggestions'],
     ghostCompletion: string | null,
   ): void {
-    this.ensureTerminal(terminalId);
-
-    this._patchState(terminalId, (state: TerminalState): TerminalState => {
-      const sameSuggestions: boolean = state.suggestions === suggestions;
-      const sameGhostCompletion: boolean = state.ghostCompletion === ghostCompletion;
-
-      if (sameSuggestions && sameGhostCompletion) {
-        return state;
-      }
-
-      return {
-        ...state,
-        suggestions,
-        ghostCompletion,
-      };
-    });
+    this._sessionStore.setSuggestions(terminalId, suggestions, ghostCompletion);
   }
 
-  public resetSuggestions(terminalId: string): void {
-    this.ensureTerminal(terminalId);
-
-    this._patchState(terminalId, (state: TerminalState): TerminalState => {
-      if (state.suggestions.length === 0 && state.ghostCompletion === null) {
-        return state;
-      }
-
-      return {
-        ...state,
-        suggestions: [],
-        ghostCompletion: null,
-      };
-    });
+  public resetSuggestions(terminalId: string | null | undefined): void {
+    this._sessionStore.resetSuggestions(terminalId);
   }
 
-  private _patchState(
-    terminalId: string,
-    updater: (state: TerminalState) => TerminalState,
-  ): void {
-    this._states.update((states: Record<string, TerminalState>) => {
-      const currentState: TerminalState | undefined = states[terminalId];
-
-      if (!currentState) {
-        return states;
-      }
-
-      const nextState: TerminalState = updater(currentState);
-
-      if (nextState === currentState) {
-        return states;
-      }
-
-      return {
-        ...states,
-        [terminalId]: nextState,
-      };
-    });
-  }
-
-  private _withVisibleLines(state: TerminalState): TerminalState {
-    const normalizedFilter: string = state.options.filterText.trim().toLowerCase();
-
-    if (!normalizedFilter) {
-      if (state.visibleLines === state.lines) {
-        return state;
-      }
-
-      return {
-        ...state,
-        visibleLines: state.lines,
-      };
-    }
-
-    const visibleLines: readonly TerminalLine[] = state.lines.filter(
-      (line: TerminalLine) =>
-        line.plainText.toLowerCase().includes(normalizedFilter),
-    );
+  private _composeState(
+    sessionState: TerminalSessionState,
+    lines: readonly TerminalLine[],
+  ): TerminalState {
+    const retainedLines: readonly TerminalLine[] = lines.slice(-sessionState.options.maxLines);
 
     return {
-      ...state,
-      visibleLines,
+      id: sessionState.id,
+      lines: retainedLines,
+      visibleLines: this._getVisibleLines(
+        retainedLines,
+        sessionState.options.filterText,
+        sessionState.options.maxLines,
+      ),
+      options: sessionState.options,
+      autoScrollEnabled: sessionState.autoScrollEnabled,
+      inputValue: sessionState.inputValue,
+      history: sessionState.history,
+      historyIndex: sessionState.historyIndex,
+      suggestions: sessionState.suggestions,
+      ghostCompletion: sessionState.ghostCompletion,
     };
   }
 
-  private _createLineId(): string {
-    return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  private _getVisibleLines(
+    lines: readonly TerminalLine[],
+    filterText: string,
+    maxLines: number,
+  ): readonly TerminalLine[] {
+    const normalizedFilterText: string = filterText.trim().toLowerCase();
+
+    if (!normalizedFilterText) {
+      return lines.slice(-maxLines);
+    }
+
+    return lines
+      .filter((line: TerminalLine) => line.plainText.toLowerCase().includes(normalizedFilterText))
+      .slice(-maxLines);
   }
 }

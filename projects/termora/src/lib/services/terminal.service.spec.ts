@@ -27,9 +27,7 @@ function createCommandDefinition(
   return {
     name: 'help',
     description: 'Show help',
-    execute: (): void => {
-      // Intentionally empty for tests.
-    },
+    execute: (): undefined => undefined,
     ...overrides,
   };
 }
@@ -55,20 +53,31 @@ function createResolution(
 
 function createState(overrides: Partial<TerminalState> = {}): TerminalState {
   return {
-    inputValue: '',
-    suggestions: [],
+    id: 'main',
+    lines: [],
+    visibleLines: [],
     options: createOptions(),
+    autoScrollEnabled: true,
+    inputValue: '',
+    history: [],
+    historyIndex: null,
+    suggestions: [],
+    ghostCompletion: null,
     ...overrides,
-  } as TerminalState;
+  };
 }
+
 describe('TerminalService', () => {
   let service: TerminalService;
+
+  const noop = (): undefined => undefined;
 
   let storeMock: {
     ensureTerminal: ReturnType<typeof vi.fn>;
     getStates: ReturnType<typeof vi.fn>;
     getStateSnapshot: ReturnType<typeof vi.fn>;
     setOptions: ReturnType<typeof vi.fn>;
+    configureMaxStoredLines: ReturnType<typeof vi.fn>;
     appendLine: ReturnType<typeof vi.fn>;
     clear: ReturnType<typeof vi.fn>;
     setAutoScrollEnabled: ReturnType<typeof vi.fn>;
@@ -99,6 +108,7 @@ describe('TerminalService', () => {
       getStates: vi.fn(() => statesSignal),
       getStateSnapshot: vi.fn(),
       setOptions: vi.fn(),
+      configureMaxStoredLines: vi.fn(),
       appendLine: vi.fn(),
       clear: vi.fn(),
       setAutoScrollEnabled: vi.fn(),
@@ -163,10 +173,31 @@ describe('TerminalService', () => {
       });
     });
 
-    it('should print output through the store', () => {
+    it('should configure max stored lines through the store', () => {
+      service.setMaxStoredLines(2000);
+
+      expect(storeMock.configureMaxStoredLines).toHaveBeenCalledExactlyOnceWith(2000);
+    });
+
+    it('should print output through the store using the legacy signature', () => {
       service.print('main', 'hello');
 
       expect(storeMock.appendLine).toHaveBeenCalledExactlyOnceWith('main', 'hello', 'output');
+    });
+
+    it('should print output through the store using write options', () => {
+      service.print('hello', {
+        terminalId: 'main',
+        kind: 'warning',
+      });
+
+      expect(storeMock.appendLine).toHaveBeenCalledExactlyOnceWith('main', 'hello', 'warning');
+    });
+
+    it('should print output to the global terminal when no terminal id is provided', () => {
+      service.print('hello');
+
+      expect(storeMock.appendLine).toHaveBeenCalledExactlyOnceWith(undefined, 'hello', 'output');
     });
 
     it('should clear the terminal through the store', () => {
@@ -209,16 +240,6 @@ describe('TerminalService', () => {
   });
 
   describe('updateInput', () => {
-    it('should do nothing when terminal state does not exist', () => {
-      storeMock.getStateSnapshot.mockReturnValue(undefined);
-
-      service.updateInput('main', 'help');
-
-      expect(engineMock.resolve).not.toHaveBeenCalled();
-      expect(storeMock.setInputValue).not.toHaveBeenCalled();
-      expect(storeMock.setSuggestions).not.toHaveBeenCalled();
-    });
-
     it('should resolve input and update value and suggestions', () => {
       const commands = [createCommandDefinition({ name: 'help' })];
       const state = createState({
@@ -234,6 +255,7 @@ describe('TerminalService', () => {
 
       service.updateInput('main', 'he');
 
+      expect(storeMock.getStateSnapshot).toHaveBeenCalledExactlyOnceWith('main');
       expect(engineMock.resolve).toHaveBeenCalledExactlyOnceWith('he', commands);
       expect(storeMock.setInputValue).toHaveBeenCalledExactlyOnceWith('main', 'he');
       expect(storeMock.setSuggestions).toHaveBeenCalledExactlyOnceWith(
@@ -245,17 +267,6 @@ describe('TerminalService', () => {
   });
 
   describe('moveHistory', () => {
-    it('should return next value when terminal state does not exist', () => {
-      storeMock.moveHistory.mockReturnValue('previous');
-      storeMock.getStateSnapshot.mockReturnValue(undefined);
-
-      const result = service.moveHistory('main', 'up');
-
-      expect(result).toBe('previous');
-      expect(engineMock.resolve).not.toHaveBeenCalled();
-      expect(storeMock.setSuggestions).not.toHaveBeenCalled();
-    });
-
     it('should resolve moved history value and update suggestions', () => {
       const commands = [createCommandDefinition({ name: 'help' })];
       const state = createState({
@@ -273,6 +284,8 @@ describe('TerminalService', () => {
       const result = service.moveHistory('main', 'up');
 
       expect(result).toBe('help');
+      expect(storeMock.moveHistory).toHaveBeenCalledExactlyOnceWith('main', 'up');
+      expect(storeMock.getStateSnapshot).toHaveBeenCalledExactlyOnceWith('main');
       expect(engineMock.resolve).toHaveBeenCalledExactlyOnceWith('help', commands);
       expect(storeMock.setSuggestions).toHaveBeenCalledExactlyOnceWith(
         'main',
@@ -283,14 +296,6 @@ describe('TerminalService', () => {
   });
 
   describe('applyFirstSuggestion', () => {
-    it('should return null when terminal state does not exist', () => {
-      storeMock.getStateSnapshot.mockReturnValue(undefined);
-
-      const result = service.applyFirstSuggestion('main');
-
-      expect(result).toBeNull();
-    });
-
     it('should return null when no suggestion is available', () => {
       storeMock.getStateSnapshot.mockReturnValue(
         createState({
@@ -326,7 +331,7 @@ describe('TerminalService', () => {
       storeMock.getStateSnapshot.mockReturnValue(state);
       engineMock.resolve.mockReturnValue(resolution);
 
-      const updateInputSpy = vi.spyOn(service, 'updateInput').mockImplementation((): void => {});
+      const updateInputSpy = vi.spyOn(service, 'updateInput').mockImplementation(noop);
 
       const result = service.applyFirstSuggestion('main');
 
@@ -356,7 +361,7 @@ describe('TerminalService', () => {
       storeMock.getStateSnapshot.mockReturnValue(state);
       engineMock.resolve.mockReturnValue(resolution);
 
-      const updateInputSpy = vi.spyOn(service, 'updateInput').mockImplementation((): void => {});
+      const updateInputSpy = vi.spyOn(service, 'updateInput').mockImplementation(noop);
 
       const result = service.applyFirstSuggestion('main');
 
@@ -379,21 +384,6 @@ describe('TerminalService', () => {
       expect(storeMock.pushHistory).not.toHaveBeenCalled();
     });
 
-    it('should return not handled when terminal state does not exist', () => {
-      storeMock.getStateSnapshot.mockReturnValue(undefined);
-
-      const result = service.submitCommand('main', '   help   ');
-
-      expect(result).toEqual({
-        handled: false,
-        cleared: false,
-        rawInput: 'help',
-      });
-
-      expect(storeMock.getStateSnapshot).toHaveBeenCalledExactlyOnceWith('main');
-      expect(storeMock.pushHistory).not.toHaveBeenCalled();
-    });
-
     it('should append command and error when command is not found', () => {
       const commands = [createCommandDefinition({ name: 'help' })];
       const state = createState({
@@ -412,10 +402,11 @@ describe('TerminalService', () => {
 
       storeMock.getStateSnapshot.mockReturnValue(state);
       engineMock.resolve.mockReturnValue(resolution);
-      registryMock.find.mockReturnValue(undefined);
+      registryMock.find.mockReturnValue(null);
 
       const result = service.submitCommand('main', '  unknown  ');
 
+      expect(storeMock.getStateSnapshot).toHaveBeenCalledExactlyOnceWith('main');
       expect(engineMock.resolve).toHaveBeenCalledExactlyOnceWith('unknown', commands);
       expect(registryMock.find).toHaveBeenCalledExactlyOnceWith('unknown', commands);
 
@@ -524,6 +515,34 @@ describe('TerminalService', () => {
         cleared: true,
         rawInput: 'clear',
       });
+    });
+
+    it('should pass null as terminal id to command execution for the global terminal', () => {
+      const command = createCommandDefinition({ name: 'help' });
+      const commands = [command];
+      const state = createState({
+        id: null,
+        options: createOptions({ commands }),
+      });
+      const resolution = createResolution({
+        parsed: {
+          rawInput: 'help',
+          commandName: 'help',
+          arguments: [],
+          activeToken: 'help',
+          activeTokenIndex: 0,
+          endsWithWhitespace: false,
+        },
+      });
+
+      storeMock.getStateSnapshot.mockReturnValue(state);
+      engineMock.resolve.mockReturnValue(resolution);
+      registryMock.find.mockReturnValue(command);
+
+      service.submitCommand(undefined, 'help');
+
+      expect(engineMock.execute).toHaveBeenCalledOnce();
+      expect(engineMock.execute.mock.calls[0]?.[0]).toBeNull();
     });
   });
 });

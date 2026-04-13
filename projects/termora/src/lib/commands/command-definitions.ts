@@ -1,4 +1,4 @@
-import { TerminalCommandDefinition } from '../models/terminal-command.model';
+import { type TerminalCommandDefinition } from '../models/terminal-command.model';
 
 export const NATIVE_COMMAND_DEFINITIONS: readonly TerminalCommandDefinition[] = [
   {

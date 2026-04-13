@@ -1,11 +1,8 @@
 import { type TerminalCommandSuggestion } from './terminal-command.model';
-import { type TerminalLine } from './terminal-line.model';
 import { type TerminalOptions } from './terminal-options.model';
 
-export interface TerminalState {
+export interface TerminalSessionState {
   id: string | null;
-  lines: readonly TerminalLine[];
-  visibleLines: readonly TerminalLine[];
   options: TerminalOptions;
   autoScrollEnabled: boolean;
   inputValue: string;

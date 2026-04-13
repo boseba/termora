@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 
-import { ParsedCommandInput } from '../models/terminal-command.model';
+import { type ParsedCommandInput } from '../models/terminal-command.model';
 
 @Injectable({ providedIn: 'root' })
 export class CommandParser {
@@ -20,7 +20,7 @@ export class CommandParser {
     }
 
     const tokens: string[] = this._tokenize(trimmedInput);
-    const commandName: string | null = tokens[0] ?? null;
+    const commandName: string | null = tokens.at(0) ?? null;
     const argumentsTokens: string[] = tokens.slice(1);
 
     const activeTokenIndex: number = endsWithWhitespace
@@ -41,16 +41,13 @@ export class CommandParser {
 
   private _tokenize(value: string): string[] {
     const tokens: string[] = [];
-    const tokenPattern: RegExp = /"([^"]*)"|[^\s]+/g;
+    const tokenPattern = /"([^"]*)"|[^\s]+/g;
 
     let match: RegExpExecArray | null = tokenPattern.exec(value);
 
-    while (match) {
-      if (match[1] !== undefined) {
-        tokens.push(match[1]);
-      } else {
-        tokens.push(match[0]);
-      }
+    while (match !== null) {
+      const quotedValue: string | undefined = match.at(1);
+      tokens.push(quotedValue ?? match[0]);
 
       match = tokenPattern.exec(value);
     }

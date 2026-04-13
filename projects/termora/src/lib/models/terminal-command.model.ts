@@ -37,7 +37,7 @@ export interface ParsedCommandInput {
 }
 
 export interface TerminalCommandExecutionContext {
-  terminalId: string;
+  terminalId: string | null;
   rawInput: string;
   arguments: string[];
   api: {

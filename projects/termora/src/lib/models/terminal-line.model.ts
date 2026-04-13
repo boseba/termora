@@ -1,4 +1,4 @@
-import { SafeHtml } from "@angular/platform-browser";
+import { type SafeHtml } from "@angular/platform-browser";
 
 export type TerminalLineKind = 'output' | 'command' | 'system' | 'error' | 'warning' | 'info';
 
