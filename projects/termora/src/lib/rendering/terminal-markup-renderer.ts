@@ -62,9 +62,12 @@ export class TerminalMarkupRenderer {
 
     TerminalMarkupRenderer._tokenPattern.lastIndex = 0;
 
+    const plainText: string = plainTextParts.join('');
+    const renderedHtml: string = htmlParts.length > 0 ? htmlParts.join('') : '&nbsp;';
+
     return {
-      plainText: plainTextParts.join(''),
-      renderedHtml: htmlParts.join(''),
+      plainText,
+      renderedHtml,
     };
   }
 
@@ -272,9 +275,7 @@ export class TerminalMarkupRenderer {
     }
 
     if (style.textDecoration) {
-      declarations.push(
-        `text-decoration: ${this._escapeCssValue(style.textDecoration)}`,
-      );
+      declarations.push(`text-decoration: ${this._escapeCssValue(style.textDecoration)}`);
     }
 
     if (style.color) {
