@@ -39,7 +39,9 @@
           "builder": "@angular/build:unit-test",
           "options": {
             "tsConfig": "projects/termora/tsconfig.spec.json",
-            "buildTarget": "termora:build:development"
+            "buildTarget": "termora:build:development",
+            "coverage": true,
+            "coverageReporters": ["text-summary", "html", "lcov"]
           }
         },
         "lint": {
