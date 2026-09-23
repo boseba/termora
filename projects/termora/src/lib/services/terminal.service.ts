@@ -61,6 +61,10 @@ export class TerminalService {
     this._store.appendLine(writeOptions?.terminalId, firstArgument, writeOptions?.kind ?? 'output');
   }
 
+  public printBatch(values: readonly string[], options?: TerminalWriteOptions): void {
+    this._store.appendLines(options?.terminalId, values, options?.kind ?? 'output');
+  }
+
   public clear(terminalId?: string | null): void {
     this._store.clear(terminalId);
   }

@@ -57,6 +57,7 @@ describe('TerminalStore', () => {
     getLinesByChannel: ReturnType<typeof vi.fn>;
     configureMaxStoredLines: ReturnType<typeof vi.fn>;
     appendLine: ReturnType<typeof vi.fn>;
+    appendLines: ReturnType<typeof vi.fn>;
     clear: ReturnType<typeof vi.fn>;
   };
 
@@ -81,6 +82,7 @@ describe('TerminalStore', () => {
       getLinesByChannel: vi.fn(() => linesByChannelSignal),
       configureMaxStoredLines: vi.fn(),
       appendLine: vi.fn(),
+      appendLines: vi.fn(),
       clear: vi.fn(),
     };
 
@@ -173,6 +175,7 @@ describe('TerminalStore', () => {
     store.setOptions('main', { maxLines: 10 });
     store.configureMaxStoredLines(100);
     store.appendLine('main', 'hello', 'error');
+    store.appendLines('main', ['one', 'two'], 'info');
     store.appendError('main', 'boom');
     store.clear('main');
     store.setAutoScrollEnabled('main', false);
@@ -188,6 +191,11 @@ describe('TerminalStore', () => {
     expect(logStoreMock.configureMaxStoredLines).toHaveBeenCalledExactlyOnceWith(100);
     expect(logStoreMock.appendLine).toHaveBeenNthCalledWith(1, 'main', 'hello', 'error');
     expect(logStoreMock.appendLine).toHaveBeenNthCalledWith(2, 'main', 'boom', 'error');
+    expect(logStoreMock.appendLines).toHaveBeenCalledExactlyOnceWith(
+      'main',
+      ['one', 'two'],
+      'info',
+    );
     expect(logStoreMock.clear).toHaveBeenCalledExactlyOnceWith('main');
     expect(sessionStoreMock.resetSuggestions).toHaveBeenCalledTimes(2);
     expect(sessionStoreMock.setAutoScrollEnabled).toHaveBeenCalledExactlyOnceWith('main', false);

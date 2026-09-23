@@ -19,6 +19,7 @@ describe('TermoraRuntimeService', () => {
   let terminalServiceMock: {
     setMaxStoredLines: ReturnType<typeof vi.fn>;
     print: ReturnType<typeof vi.fn>;
+    printBatch: ReturnType<typeof vi.fn>;
     clear: ReturnType<typeof vi.fn>;
   };
 
@@ -28,6 +29,7 @@ describe('TermoraRuntimeService', () => {
     terminalServiceMock = {
       setMaxStoredLines: vi.fn(),
       print: vi.fn(),
+      printBatch: vi.fn(),
       clear: vi.fn(),
     };
 
@@ -83,5 +85,21 @@ describe('TermoraRuntimeService', () => {
     });
 
     expect(terminalServiceMock.clear).toHaveBeenCalledExactlyOnceWith('main');
+  });
+
+  it('should forward print batch events', () => {
+    service.initialize();
+
+    events$.next({
+      type: 'printBatch',
+      values: ['one', 'two'],
+      terminalId: 'main',
+      kind: 'info',
+    });
+
+    expect(terminalServiceMock.printBatch).toHaveBeenCalledExactlyOnceWith(['one', 'two'], {
+      terminalId: 'main',
+      kind: 'info',
+    });
   });
 });

@@ -56,6 +56,13 @@ export class TermoraRuntimeService {
           kind: event.kind,
         });
         return;
+
+      case 'printBatch':
+        this._terminalService.printBatch(event.values, {
+          terminalId: event.terminalId,
+          kind: event.kind,
+        });
+        return;
     }
   }
 }

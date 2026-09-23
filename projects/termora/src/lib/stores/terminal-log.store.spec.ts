@@ -45,6 +45,37 @@ describe('TerminalLogStore', () => {
     expect(lines[0].kind).toBe('error');
   });
 
+  it('should append multiple lines in one signal update', () => {
+    store.appendLines('main', ['one', 'two'], 'info');
+
+    const lines = store.getLinesByChannel()()['main'];
+
+    expect(lines.map((line) => line.raw)).toEqual(['one', 'two']);
+    expect(lines.every((line) => line.kind === 'info')).toBe(true);
+  });
+
+  it('should not update the signal for an empty batch', () => {
+    const before = store.getLinesByChannel()();
+
+    store.appendLines('main', []);
+
+    expect(store.getLinesByChannel()()).toBe(before);
+  });
+
+  it('should trim a batch according to the configured max size', () => {
+    vi.spyOn(globalThis.crypto, 'randomUUID')
+      .mockReturnValueOnce('00000000-0000-0000-0000-000000000001')
+      .mockReturnValueOnce('00000000-0000-0000-0000-000000000002')
+      .mockReturnValueOnce('00000000-0000-0000-0000-000000000003');
+
+    store.configureMaxStoredLines(2);
+    store.appendLines('main', ['one', 'two', 'three']);
+
+    const lines = store.getLinesByChannel()()['main'];
+
+    expect(lines.map((line) => line.raw)).toEqual(['two', 'three']);
+  });
+
   it('should trim stored lines according to the configured max size', () => {
     vi.spyOn(globalThis.crypto, 'randomUUID')
       .mockReturnValueOnce('00000000-0000-0000-0000-000000000001')

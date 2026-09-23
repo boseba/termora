@@ -77,6 +77,15 @@ export class TerminalStore {
     this._logStore.appendLine(terminalId, raw, kind);
   }
 
+  public appendLines(
+    terminalId: string | null | undefined,
+    raws: readonly string[],
+    kind: TerminalLineKind = 'output',
+  ): void {
+    this.ensureTerminal(terminalId);
+    this._logStore.appendLines(terminalId, raws, kind);
+  }
+
   public appendError(terminalId: string | null | undefined, raw: string): void {
     this.appendLine(terminalId, raw, 'error');
   }
@@ -147,7 +156,7 @@ export class TerminalStore {
     const normalizedFilterText: string = filterText.trim().toLowerCase();
 
     if (!normalizedFilterText) {
-      return lines.slice(-maxLines);
+      return lines;
     }
 
     return lines

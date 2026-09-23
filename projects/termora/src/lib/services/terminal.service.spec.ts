@@ -79,6 +79,7 @@ describe('TerminalService', () => {
     setOptions: ReturnType<typeof vi.fn>;
     configureMaxStoredLines: ReturnType<typeof vi.fn>;
     appendLine: ReturnType<typeof vi.fn>;
+    appendLines: ReturnType<typeof vi.fn>;
     clear: ReturnType<typeof vi.fn>;
     setAutoScrollEnabled: ReturnType<typeof vi.fn>;
     setInputValue: ReturnType<typeof vi.fn>;
@@ -110,6 +111,7 @@ describe('TerminalService', () => {
       setOptions: vi.fn(),
       configureMaxStoredLines: vi.fn(),
       appendLine: vi.fn(),
+      appendLines: vi.fn(),
       clear: vi.fn(),
       setAutoScrollEnabled: vi.fn(),
       setInputValue: vi.fn(),
@@ -198,6 +200,12 @@ describe('TerminalService', () => {
       service.print('hello');
 
       expect(storeMock.appendLine).toHaveBeenCalledExactlyOnceWith(undefined, 'hello', 'output');
+    });
+
+    it('should print a batch through the store', () => {
+      service.printBatch(['one', 'two'], { terminalId: 'main', kind: 'info' });
+
+      expect(storeMock.appendLines).toHaveBeenCalledExactlyOnceWith('main', ['one', 'two'], 'info');
     });
 
     it('should clear the terminal through the store', () => {

@@ -533,10 +533,15 @@ Core methods:
 | `setMaxStoredLines(maxStoredLines)` | Configures global retained log storage. |
 | `print(value, options?)` | Prints a line to the default or targeted terminal. |
 | `print(terminalId, value)` | Prints a line to a specific terminal using the overload form. |
+| `printBatch(values, options?)` | Prints several lines with one state update. Recommended for history replay and log imports. |
 | `clear(terminalId?)` | Clears a terminal. |
 | `setCommands(terminalId, commands)` | Replaces terminal commands. |
 | `setFilter(terminalId, filterText)` | Updates the line filter. |
 | `setMaxLines(terminalId, maxLines)` | Updates the maximum visible lines. |
+
+`print()` remains appropriate for real-time streaming. For a large synchronous history replay or import,
+use `printBatch()` so rendering still happens for every line while the stored log and dependent state are
+updated once for the whole batch.
 
 ## Models
 

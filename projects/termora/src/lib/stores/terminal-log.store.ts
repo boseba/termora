@@ -44,26 +44,39 @@ export class TerminalLogStore {
     raw: string,
     kind: TerminalLineKind = 'output',
   ): void {
+    this.appendLines(terminalId, [raw], kind);
+  }
+
+  public appendLines(
+    terminalId: string | null | undefined,
+    raws: readonly string[],
+    kind: TerminalLineKind = 'output',
+  ): void {
+    if (raws.length === 0) {
+      return;
+    }
+
     const channelKey: string = getTerminalChannelKey(terminalId);
-    const rendered = this._renderer.render(raw);
+    const lines: TerminalLine[] = raws.map((raw: string): TerminalLine => {
+      const rendered = this._renderer.render(raw);
+      const safeHtml: SafeHtml = this._sanitizer.bypassSecurityTrustHtml(rendered.renderedHtml);
 
-    const safeHtml: SafeHtml = this._sanitizer.bypassSecurityTrustHtml(rendered.renderedHtml);
-
-    const line: TerminalLine = {
-      id: this._createLineId(),
-      raw,
-      plainText: rendered.plainText,
-      renderedHtml: safeHtml,
-      kind,
-      timestamp: Date.now(),
-    };
+      return {
+        id: this._createLineId(),
+        raw,
+        plainText: rendered.plainText,
+        renderedHtml: safeHtml,
+        kind,
+        timestamp: Date.now(),
+      };
+    });
 
     this._linesByChannel.update((linesByChannel: Record<string, readonly TerminalLine[]>) => {
       const currentLines: readonly TerminalLine[] = linesByChannel[channelKey] ?? [];
 
       return {
         ...linesByChannel,
-        [channelKey]: [...currentLines, line].slice(-this._maxStoredLines()),
+        [channelKey]: [...currentLines, ...lines].slice(-this._maxStoredLines()),
       };
     });
   }

@@ -1,8 +1,12 @@
 import {
+  CdkFixedSizeVirtualScroll,
+  CdkVirtualForOf,
+  CdkVirtualScrollViewport,
+} from '@angular/cdk/scrolling';
+import {
   type AfterViewChecked,
   ChangeDetectionStrategy,
   Component,
-  type ElementRef,
   computed,
   effect,
   inject,
@@ -19,7 +23,12 @@ import { TerminalInputComponent } from '../terminal-input/terminal-input.compone
 @Component({
   selector: 'termora-terminal',
   standalone: true,
-  imports: [TerminalInputComponent],
+  imports: [
+    CdkFixedSizeVirtualScroll,
+    CdkVirtualForOf,
+    CdkVirtualScrollViewport,
+    TerminalInputComponent,
+  ],
   templateUrl: './terminal.component.html',
   styleUrl: './terminal.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -33,7 +42,7 @@ export class TerminalComponent implements AfterViewChecked {
 
   public readonly commandSubmitted = output<string>();
 
-  protected readonly container = viewChild.required<ElementRef<HTMLDivElement>>('container');
+  protected readonly viewport = viewChild.required<CdkVirtualScrollViewport>('viewport');
 
   protected readonly terminalInput = viewChild<TerminalInputComponent>('terminalInput');
 
@@ -63,14 +72,14 @@ export class TerminalComponent implements AfterViewChecked {
       return;
     }
 
-    const element: HTMLDivElement = this.container().nativeElement;
-    element.scrollTop = element.scrollHeight;
+    const viewport: CdkVirtualScrollViewport = this.viewport();
+    viewport.scrollTo({ bottom: 0 });
   }
 
   protected onScroll(): void {
-    const element: HTMLDivElement = this.container().nativeElement;
+    const viewport: CdkVirtualScrollViewport = this.viewport();
     const threshold = 10;
-    const distance: number = element.scrollHeight - element.scrollTop - element.clientHeight;
+    const distance: number = viewport.measureScrollOffset('bottom');
     const isAtBottom: boolean = distance <= threshold;
 
     this._terminalService.setAutoScrollEnabled(this.terminalId(), isAtBottom);
@@ -88,5 +97,9 @@ export class TerminalComponent implements AfterViewChecked {
 
   protected forwardCommand(command: string): void {
     this.commandSubmitted.emit(command);
+  }
+
+  protected trackLine(_index: number, line: TerminalState['lines'][number]): string {
+    return line.id;
   }
 }
