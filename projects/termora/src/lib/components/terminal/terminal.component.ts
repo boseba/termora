@@ -86,6 +86,10 @@ export class TerminalComponent implements AfterViewChecked {
   }
 
   protected focusInput(event?: MouseEvent): void {
+    if (event?.target instanceof Element && event.target.closest('.line')) {
+      return;
+    }
+
     const inputComponent: TerminalInputComponent | undefined = this.terminalInput();
 
     if (!inputComponent) {
