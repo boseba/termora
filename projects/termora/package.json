@@ -1,12 +1,12 @@
 {
   "name": "termora",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "Angular terminal component library.",
   "author": "Sébastien Bosmans",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/boseba/termora.git"
+    "url": "git+https://github.com/boseba/termora.git"
   },
   "homepage": "https://github.com/boseba/termora#readme",
   "bugs": {

@@ -43,51 +43,55 @@ jobs:
               run: npm publish --dry-run
 
     publish:
-        name: Publish to NPM
-        runs-on: ubuntu-latest
-        needs: validate
-
-        permissions:
-            contents: read
-            id-token: write
-
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
-
-            - name: Setup pnpm
-              uses: pnpm/action-setup@v4
-
-            - name: Setup Node.js
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 24
-                  registry-url: 'https://registry.npmjs.org/'
-                  cache: pnpm
-
-            - name: Upgrade npm
-              run: npm install --global npm@latest
-
-            - name: Display versions
-              run: |
-                  node --version
-                  npm --version
-                  pnpm --version
-
-            - name: Install dependencies
-              run: pnpm install --frozen-lockfile
-
-            - name: Build package
-              run: pnpm run build
-
-            - name: Verify package
-              working-directory: dist/termora
-              run: npm pack --dry-run
-
-            - name: Publish to npm
-              working-directory: dist/termora
-              run: npm publish --access public
-
+      name: Publish to NPM
+      runs-on: ubuntu-latest
+      needs: validate
+  
+      permissions:
+          contents: read
+          id-token: write
+  
+      steps:
+          - name: Checkout repository
+            uses: actions/checkout@v6
+  
+          - name: Setup pnpm
+            uses: pnpm/action-setup@v4
+  
+          - name: Setup Node.js
+            uses: actions/setup-node@v6
+            with:
+                node-version: 24
+                registry-url: https://registry.npmjs.org
+  
+          - name: Upgrade npm
+            run: npm install --global npm@latest
+  
+          - name: Display versions
+            run: |
+                node --version
+                npm --version
+                pnpm --version
+  
+          - name: Install dependencies
+            run: pnpm install --frozen-lockfile
+  
+          - name: Build package
+            run: pnpm run build
+  
+          - name: Debug npm OIDC environment
+            run: |
+                echo "ACTIONS_ID_TOKEN_REQUEST_URL=${ACTIONS_ID_TOKEN_REQUEST_URL:+set}"
+                echo "ACTIONS_ID_TOKEN_REQUEST_TOKEN=${ACTIONS_ID_TOKEN_REQUEST_TOKEN:+set}"
+                echo "GITHUB_REPOSITORY=$GITHUB_REPOSITORY"
+                echo "GITHUB_WORKFLOW_REF=$GITHUB_WORKFLOW_REF"
+                echo "GITHUB_REF=$GITHUB_REF"
+                echo "GITHUB_REF_NAME=$GITHUB_REF_NAME"
+                echo "GITHUB_EVENT_NAME=$GITHUB_EVENT_NAME"
+  
+          - name: Publish to npm
+            working-directory: dist/termora
+            run: npm publish
     release:
         name: Create GitHub Release
         runs-on: ubuntu-latest
