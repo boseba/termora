@@ -86,7 +86,7 @@ jobs:
 
             - name: Publish to npm
               working-directory: dist/termora
-              run: npm publish --access public --no-git-checks
+              run: npm publish --access public
 
     release:
         name: Create GitHub Release
