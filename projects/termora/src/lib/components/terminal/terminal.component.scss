@@ -46,6 +46,7 @@
 }
 
 .terminal {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -61,6 +62,15 @@
     overflow: hidden;
     text-overflow: ellipsis;
     padding: 0.2rem 0.8rem;
+
+    &.line-measure {
+      position: absolute;
+      left: -9999px;
+      top: 0;
+      visibility: hidden;
+      pointer-events: none;
+      width: max-content;
+    }
 
     .content {
       em {

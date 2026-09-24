@@ -5,13 +5,17 @@ import {
 } from '@angular/cdk/scrolling';
 import {
   type AfterViewChecked,
+  type AfterViewInit,
   ChangeDetectionStrategy,
   Component,
   computed,
   effect,
+  type ElementRef,
   inject,
   input,
+  type OnDestroy,
   output,
+  signal,
   viewChild,
 } from '@angular/core';
 
@@ -33,7 +37,7 @@ import { TerminalInputComponent } from '../terminal-input/terminal-input.compone
   styleUrl: './terminal.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class TerminalComponent implements AfterViewChecked {
+export class TerminalComponent implements AfterViewChecked, AfterViewInit, OnDestroy {
   public readonly terminalId = input<string | null>(null);
   public readonly showInput = input<boolean>(true);
   public readonly filterText = input<string>('');
@@ -44,9 +48,15 @@ export class TerminalComponent implements AfterViewChecked {
 
   protected readonly viewport = viewChild.required<CdkVirtualScrollViewport>('viewport');
 
+  protected readonly lineMeasure = viewChild.required<ElementRef<HTMLElement>>('lineMeasure');
+
+  protected readonly lineSize = signal(1);
+
   protected readonly terminalInput = viewChild<TerminalInputComponent>('terminalInput');
 
   private readonly _terminalService = inject(TerminalService);
+
+  private _lineResizeObserver?: ResizeObserver;
 
   protected readonly state = computed(
     (): TerminalState => this._terminalService.getStateSnapshot(this.terminalId()),
@@ -74,6 +84,28 @@ export class TerminalComponent implements AfterViewChecked {
 
     const viewport: CdkVirtualScrollViewport = this.viewport();
     viewport.scrollTo({ bottom: 0 });
+  }
+
+  public ngAfterViewInit(): void {
+    const element: HTMLElement = this.lineMeasure().nativeElement;
+    const initialLineSize: number = element.getBoundingClientRect().height;
+
+    if (initialLineSize > 0) {
+      this.lineSize.set(initialLineSize);
+    }
+
+    this._lineResizeObserver = new ResizeObserver(([entry]: ResizeObserverEntry[]) => {
+      const lineSize: number = entry.borderBoxSize[0]?.blockSize ?? entry.contentRect.height;
+
+      if (lineSize > 0 && lineSize !== this.lineSize()) {
+        this.lineSize.set(lineSize);
+      }
+    });
+    this._lineResizeObserver.observe(element);
+  }
+
+  public ngOnDestroy(): void {
+    this._lineResizeObserver?.disconnect();
   }
 
   protected onScroll(): void {

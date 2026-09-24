@@ -1,5 +1,6 @@
 <div class="terminal" (mousedown)="focusInput($event)">
-  <cdk-virtual-scroll-viewport #viewport class="terminal-container" itemSize="36" (scroll)="onScroll()">
+  <div #lineMeasure class="line line-measure" aria-hidden="true">M</div>
+  <cdk-virtual-scroll-viewport #viewport class="terminal-container" [itemSize]="lineSize()" (scroll)="onScroll()">
     <div *cdkVirtualFor="let line of state().visibleLines; trackBy: trackLine" class="line"
       [class.command]="line.kind === 'command'">
       @if (line.kind === 'command') {
