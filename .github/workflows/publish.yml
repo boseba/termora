@@ -6,8 +6,7 @@ on:
             - 'v*.*.*'
 
 permissions:
-    contents: write
-    id-token: write
+    contents: read
 
 jobs:
     validate:
@@ -24,7 +23,7 @@ jobs:
             - name: Setup Node.js
               uses: actions/setup-node@v4
               with:
-                  node-version: 22
+                  node-version: 24
                   cache: pnpm
 
             - name: Install dependencies
@@ -39,39 +38,15 @@ jobs:
             - name: Build package
               run: pnpm run build
 
-    dry-run:
-        name: Dry Run Publish
-        runs-on: ubuntu-latest
-        needs: validate
-
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
-
-            - name: Setup pnpm
-              uses: pnpm/action-setup@v4
-
-            - name: Setup Node.js
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 22
-                  registry-url: 'https://registry.npmjs.org/'
-                  cache: pnpm
-
-            - name: Install dependencies
-              run: pnpm install --frozen-lockfile
-
-            - name: Build package
-              run: pnpm run build
-
-            - name: Publish dry run
+            - name: Dry run
               working-directory: dist/termora
-              run: pnpm publish --dry-run --access public --provenance --no-git-checks
+              run: npm publish --dry-run
 
     publish:
         name: Publish to NPM
         runs-on: ubuntu-latest
-        needs: dry-run
+        needs: validate
+
         permissions:
             contents: read
             id-token: write
@@ -86,9 +61,18 @@ jobs:
             - name: Setup Node.js
               uses: actions/setup-node@v4
               with:
-                  node-version: 22
+                  node-version: 24
                   registry-url: 'https://registry.npmjs.org/'
                   cache: pnpm
+
+            - name: Upgrade npm
+              run: npm install --global npm@latest
+
+            - name: Display versions
+              run: |
+                  node --version
+                  npm --version
+                  pnpm --version
 
             - name: Install dependencies
               run: pnpm install --frozen-lockfile
@@ -96,14 +80,21 @@ jobs:
             - name: Build package
               run: pnpm run build
 
+            - name: Verify package
+              working-directory: dist/termora
+              run: npm pack --dry-run
+
             - name: Publish to npm
               working-directory: dist/termora
-              run: pnpm publish --access public --provenance --no-git-checks
+              run: npm publish --access public --no-git-checks
 
     release:
         name: Create GitHub Release
         runs-on: ubuntu-latest
         needs: publish
+
+        permissions:
+            contents: write
 
         steps:
             - name: Create GitHub release
